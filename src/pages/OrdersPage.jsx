@@ -1,0 +1,1 @@
+export default function OrdersPage() { return <h1>Mis Pedidos</h1>; }

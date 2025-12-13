@@ -1,0 +1,1 @@
+export default function InvoicePage() { return <h1>Factura</h1>; }
