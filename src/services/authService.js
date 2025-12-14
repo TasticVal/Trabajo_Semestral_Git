@@ -2,7 +2,7 @@
 import { apiFetch } from './api';
 
 export const loginUser = (credentials) => {
-  // credentials es un objeto: { usuario: 'admin', password: '123' }
+  // credentials ahora es: { username: '...', password: '...' }
   return apiFetch('/usuarios/login', {
     method: 'POST',
     body: JSON.stringify(credentials)
@@ -10,7 +10,8 @@ export const loginUser = (credentials) => {
 };
 
 export const registerUser = (userData) => {
-  return apiFetch('/usuarios/registro', {
+  // CAMBIO CRÍTICO: La ruta en Spring Boot es /registrar (verbo), no /registro (sustantivo)
+  return apiFetch('/usuarios/registrar', {
     method: 'POST',
     body: JSON.stringify(userData)
   });
