@@ -1,7 +1,6 @@
 // src/services/api.js
 
-// Cambia esto si tu backend corre en otro puerto
-const API_URL = "http://localhost:3000"; 
+const API_URL = "http://localhost:8080"; 
 
 export const apiFetch = async (endpoint, options = {}) => {
   // Configuración por defecto (headers, etc)
@@ -11,19 +10,30 @@ export const apiFetch = async (endpoint, options = {}) => {
     ...(localStorage.getItem('token') && { 'Authorization': `Bearer ${localStorage.getItem('token')}` })
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers
+      }
+    });
+
+    // Si el backend da error (ej: 401, 404, 500)
+    if (!response.ok) {
+      // Intentamos leer el mensaje de error del JSON si existe
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Error del servidor: ${response.status}`);
     }
-  });
 
-  // Si el backend da error, lanzamos una alerta
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || 'Error en la petición al servidor');
+    // Si la respuesta es vacía (ej: 204 No Content), retornamos null para evitar error de JSON
+    if (response.status === 204) {
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error en apiFetch:", error);
+    throw error; // Re-lanzamos el error para que lo maneje el componente (LoginPage, etc.)
   }
-
-  return response.json();
 };
