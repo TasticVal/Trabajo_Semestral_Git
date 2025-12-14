@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/authContext'; // Importamos el contexto (fíjate en la minúscula)
-import { loginUser } from '../services/authService'; // Importamos el servicio de conexión
+import { useAuth } from '../context/authContext'; 
+import { loginUser } from '../services/authService'; 
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({ usuario: '', password: '' });
-  const [error, setError] = useState(''); // Para mostrar mensajes de error si falla
+  // CAMBIO: Usamos 'username' en lugar de 'usuario' para coincidir con el Backend
+  const [formData, setFormData] = useState({ username: '', password: '' });
+  const [error, setError] = useState(''); 
   const navigate = useNavigate();
-  const { login } = useAuth(); // Función del contexto para guardar la sesión
+  const { login } = useAuth(); 
 
   const handleChange = (e) => {
     setFormData({
@@ -21,32 +22,24 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // 1. Intentamos enviar los datos al Backend
-      // NOTA: Si no tienes el backend corriendo, esto dará error.
+      console.log("Enviando datos al backend:", formData); // Para depuración
       const response = await loginUser(formData);
       
-      // 2. Si el backend responde con éxito (y nos da un token)
-      if (response) {
-        // Guardamos el usuario en la App (simulamos un objeto usuario si el backend solo devuelve token)
-        const userData = { usuario: formData.usuario, token: response.token };
+      if (response && response.token) {
+        // Guardamos el usuario real que viene del backend
+        const userData = { 
+            username: response.usuario.username, 
+            email: response.usuario.email,
+            token: response.token 
+        };
         login(userData, response.token);
-        
-        // 3. Redirigimos a la tienda
         navigate('/productos');
+      } else {
+        setError("Respuesta inesperada del servidor");
       }
     } catch (err) {
-      // Si falla (ej. contraseña incorrecta o sin conexión)
       console.error(err);
-      setError('Error al ingresar: Verifique credenciales o conexión con el servidor.');
-      
-      // --- SOLO PARA PRUEBAS (SI NO TIENES BACKEND AÚN) ---
-      // Si quieres probar que el login "pase" aunque no tengas backend,
-      // descomenta estas 3 líneas de abajo y comenta el bloque try/catch:
-      /*
-      const fakeUser = { usuario: formData.usuario, token: '123-fake' };
-      login(fakeUser, '123-fake');
-      navigate('/productos');
-      */
+      setError('Credenciales incorrectas o error de conexión');
     }
   };
 
@@ -62,10 +55,10 @@ export default function LoginPage() {
             <label className="form-label">Usuario</label>
             <input 
               type="text" 
-              name="usuario"
+              name="username" // CAMBIO CRÍTICO: name="username"
               className="form-control" 
               placeholder="Ej: admin"
-              value={formData.usuario}
+              value={formData.username} // CAMBIO: value={formData.username}
               onChange={handleChange}
               required 
             />
@@ -91,7 +84,7 @@ export default function LoginPage() {
 
         <div className="text-center mt-3">
           <Link to="/registro" className="small text-decoration-none">
-            ¿No tienes cuenta? Regístrate aquí
+            ¿No tienes cuenta? Regístrate
           </Link>
         </div>
       </div>
