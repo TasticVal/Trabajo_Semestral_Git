@@ -9,14 +9,18 @@ export default function CartPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Estados locales para el formulario
+  // Estados
   const [envios, setEnvios] = useState([]);
-  const [costoEnvio, setCostoEnvio] = useState(0);
+  const [envioId, setEnvioId] = useState(''); // Guardamos el ID, no solo el costo
   const [direccion, setDireccion] = useState('');
-  
-  // Totales
+  const [error, setError] = useState('');
+
+  // Cálculos de totales
   const subtotal = getCartTotal();
-  const totalFinal = subtotal + Number(costoEnvio);
+  // Buscamos el precio del envío seleccionado usando el ID
+  const envioSeleccionado = envios.find(e => e.id === parseInt(envioId));
+  const costoEnvio = envioSeleccionado ? envioSeleccionado.precio : 0;
+  const totalFinal = subtotal + costoEnvio;
 
   // Cargar métodos de envío al iniciar
   useEffect(() => {
@@ -26,15 +30,10 @@ export default function CartPage() {
   const fetchEnvios = async () => {
     try {
       const data = await getShippingMethods();
-      setEnvios(data);
+      setEnvios(data || []);
     } catch (error) {
-      console.error("Error cargando envíos, usando valores por defecto.");
-      // Datos de respaldo si no hay backend
-      setEnvios([
-        { id: 1, nombre: 'Retiro en Tienda', costo: 0 },
-        { id: 2, nombre: 'Despacho a Domicilio', costo: 5000 },
-        { id: 3, nombre: 'Envío Express', costo: 8500 }
-      ]);
+      console.error("Error cargando envíos", error);
+      setError("No se pudieron cargar los métodos de envío.");
     }
   };
 
@@ -43,28 +42,43 @@ export default function CartPage() {
       alert("Por favor ingresa una dirección de despacho.");
       return;
     }
+    if (!envioId) {
+      alert("Por favor selecciona un método de envío.");
+      return;
+    }
 
+    // --- CONSTRUCCIÓN DEL OBJETO PARA EL BACKEND (PedidoModel) ---
     const nuevaOrden = {
-      cliente: user?.usuario || 'Invitado',
-      items: cart,
-      subtotal: subtotal,
-      costoEnvio: Number(costoEnvio),
-      total: totalFinal,
-      direccion: direccion,
-      fecha: new Date().toISOString(),
-      estado: 'PENDIENTE'
+      // 1. Cliente (Backend: nombreCliente)
+      nombreCliente: user?.username || 'Invitado', 
+      
+      // 2. Dirección (Backend: direccionCliente)
+      direccionCliente: direccion, 
+      
+      // 3. Productos (Backend: List<ProductoModel>)
+      // Transformamos el carrito: Si tienes 2 unidades del ID 5,
+      // enviamos [{id: 5}, {id: 5}] para que el backend descuente stock 2 veces.
+      productos: cart.flatMap(item => Array(item.cantidad).fill({ id: item.id })),
+      
+      // 4. Envío (Backend: EnvioModel)
+      metodoEnvio: { id: parseInt(envioId) }
+      
+      // Nota: 'totalCalculado', 'fecha' y 'estado' los maneja el Backend automáticamente.
     };
 
     try {
-      // Intentar enviar al backend
-      await createOrder(nuevaOrden);
-      alert("¡Pedido creado con éxito!");
+      console.log("Enviando orden:", nuevaOrden);
+      const respuesta = await createOrder(nuevaOrden);
       
-      clearCart(); // Limpiamos el carrito
-      navigate('/pedidos'); // Redirigimos a "Mis Pedidos"
+      if (respuesta && respuesta.id) {
+        alert(`¡Pedido #${respuesta.id} creado con éxito!`);
+        clearCart();
+        // Redirigimos a la factura del pedido recién creado
+        navigate(`/factura/${respuesta.id}`);
+      }
     } catch (error) {
       console.error(error);
-      alert("Error al crear el pedido (¿El backend está corriendo?)");
+      alert("Error al crear el pedido. Revisa si hay stock suficiente.");
     }
   };
 
@@ -127,12 +141,14 @@ export default function CartPage() {
                 <label className="form-label">Método de Envío</label>
                 <select 
                   className="form-select"
-                  onChange={(e) => setCostoEnvio(Number(e.target.value))}
+                  value={envioId}
+                  onChange={(e) => setEnvioId(e.target.value)}
                 >
-                  <option value="0">Seleccione...</option>
+                  <option value="">Seleccione...</option>
                   {envios.map(env => (
-                    <option key={env.id} value={env.costo}>
-                      {env.nombre} - ${env.costo}
+                    <option key={env.id} value={env.id}>
+                      {/* Backend usa 'precio', no 'costo' */}
+                      {env.nombre} - ${env.precio} 
                     </option>
                   ))}
                 </select>
@@ -170,6 +186,7 @@ export default function CartPage() {
               <button 
                 className="btn btn-success w-100 mt-4 py-2"
                 onClick={handleConfirmarPedido}
+                disabled={!envioId || !direccion}
               >
                 CONFIRMAR PEDIDO
               </button>
