@@ -9,12 +9,13 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/login');
   };
 
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
       <div className="container">
+        {/* El logo sigue llevando al inicio, es una buena práctica */}
         <Link className="navbar-brand" to="/">Mi Tienda</Link>
         
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -25,6 +26,11 @@ export default function Navbar() {
           <ul className="navbar-nav ms-auto align-items-center">
             {user ? (
               <>
+                {/* --- NUEVO BOTÓN INICIO --- */}
+                <li className="nav-item">
+                  <Link className="nav-link" to="/">Inicio</Link>
+                </li>
+
                 <li className="nav-item">
                   <Link className="nav-link" to="/productos">Catálogo</Link>
                 </li>
@@ -47,7 +53,7 @@ export default function Navbar() {
               </>
             ) : (
               <li className="nav-item">
-                <Link className="nav-link" to="/">Login</Link>
+                <Link className="nav-link" to="/login">Login</Link>
               </li>
             )}
           </ul>
